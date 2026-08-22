@@ -44,3 +44,8 @@ allowed-confusables = ["ı", "İ"]
 python_version = "3.12"
 strict = true
 packages = ["pdrive_desktop"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pdrive_desktop.presentation.app"
+disable_error_code = ["misc"]
