@@ -35,8 +35,17 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
+allowed-confusables = ["ı", "İ"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 packages = ["pdrive_desktop"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pdrive_desktop.presentation.app"
+disable_error_code = ["misc"]

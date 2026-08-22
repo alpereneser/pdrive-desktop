@@ -182,5 +182,5 @@ class DesktopController:
         return "Yerel Proton Drive bileşeni hazırlanamadı."
 
     @staticmethod
-    def _dispatch(callback: Callable[..., None], *arguments: object) -> None:
+    def _dispatch(callback: Callable[..., object], *arguments: object) -> None:
         GLib.idle_add(callback, *arguments)
