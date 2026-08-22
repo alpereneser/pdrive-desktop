@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="18" y1="15" x2="111" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9b6dff"/>
+      <stop offset="1" stop-color="#5b3fd6"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="29" y1="42" x2="96" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#eee9ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#2f176d" flood-opacity=".24"/>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="29" fill="url(#tile)"/>
+  <g filter="url(#shadow)">
+    <path d="M25 47c0-6 4-10 10-10h21l9 10h28c6 0 10 4 10 10v32c0 6-4 10-10 10H35c-6 0-10-4-10-10V47Z" fill="url(#folder)"/>
+    <path d="M25 58h78v31c0 6-4 10-10 10H35c-6 0-10-4-10-10V58Z" fill="#fff"/>
+  </g>
+  <path d="M56 67h13c11 0 18 5 18 14 0 10-7 15-19 15H56V67Zm11 9v11h2c5 0 7-2 7-6 0-3-2-5-7-5h-2Z" fill="#6d4aff"/>
+  <path d="M42 67h12v9H42z" fill="#c4b5ff"/>
+</svg>

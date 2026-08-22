@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=PDrive Desktop
+Comment=Security-first Proton Drive client
+Comment[tr]=Güvenlik odaklı Proton Drive istemcisi
+Exec=pdrive-desktop
+Icon=pdrive-desktop
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;
+Keywords=Proton;Drive;Cloud;Files;
+Keywords[tr]=Proton;Drive;Bulut;Dosyalar;Yedekleme;
+StartupNotify=true
+StartupWMClass=pdrive-desktop

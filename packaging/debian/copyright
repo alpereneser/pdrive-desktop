@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: PDrive Desktop
+Source: https://github.com/alpereneser/pdrive-desktop
+
+Files: *
+Copyright: 2026 PDrive Desktop contributors
+License: GPL-3+

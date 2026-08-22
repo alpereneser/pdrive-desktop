@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pdrive.Desktop</id>
+  <name>PDrive Desktop</name>
+  <name xml:lang="tr">PDrive Masaüstü</name>
+  <summary>A private, native Proton Drive experience for Linux</summary>
+  <summary xml:lang="tr">Linux için özel, güvenli ve yerel Proton Drive deneyimi</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.alpereneser"><name>PDrive Desktop Contributors</name></developer>
+  <url type="homepage">https://github.com/alpereneser/pdrive-desktop</url>
+  <url type="bugtracker">https://github.com/alpereneser/pdrive-desktop/issues</url>
+  <description>
+    <p>
+      PDrive Desktop brings Proton Drive to Linux with a fast, native GTK interface.
+      Browse folders, upload and download files, create folders, and run safe one-way
+      backups without routing your data through a PDrive server.
+    </p>
+    <p xml:lang="tr">
+      PDrive Masaüstü, hızlı ve yerel GTK arayüzüyle Proton Drive'ı Linux'a getirir.
+      Dosyalarınızı PDrive sunucusundan geçirmeden klasörlerde gezinin, dosya yükleyip
+      indirin, klasör oluşturun ve güvenli tek yönlü yedekleme çalıştırın.
+    </p>
+    <p>Privacy and safety are built into every layer:</p>
+    <p xml:lang="tr">Gizlilik ve güvenlik her katmanda korunur:</p>
+    <ul>
+      <li>Authentication is handled by Proton's official browser flow.</li>
+      <li xml:lang="tr">Giriş, Proton'un resmî tarayıcı akışıyla gerçekleştirilir.</li>
+      <li>PDrive never receives or stores your Proton password.</li>
+      <li xml:lang="tr">PDrive, Proton parolanızı hiçbir zaman görmez veya saklamaz.</li>
+      <li>There is no PDrive backend, analytics service, or advertising network.</li>
+      <li xml:lang="tr">PDrive sunucusu, analiz servisi veya reklam ağı bulunmaz.</li>
+      <li>Downloads never overwrite existing local files without an explicit policy.</li>
+      <li xml:lang="tr">
+        İndirilen dosyalar açık bir tercih olmadan mevcut dosyaların üzerine yazılmaz.
+      </li>
+      <li>Remote deletion requires a clear confirmation.</li>
+      <li xml:lang="tr">
+        Uzak dosyaları çöp kutusuna taşımak açık kullanıcı onayı gerektirir.
+      </li>
+    </ul>
+  </description>
+  <icon type="stock">pdrive-desktop</icon>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+  </categories>
+  <keywords>
+    <keyword>Proton Drive</keyword>
+    <keyword>cloud storage</keyword>
+    <keyword>backup</keyword>
+    <keyword xml:lang="tr">bulut depolama</keyword>
+    <keyword xml:lang="tr">yedekleme</keyword>
+  </keywords>
+  <launchable type="desktop-id">io.github.pdrive.Desktop.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <provides><binary>pdrive-desktop</binary></provides>
+  <releases>
+    <release version="0.1.3" date="2026-08-23">
+      <description>
+        <p>Enabled real navigation for every sidebar section, single-click folder opening,
+        device browsing, photo timeline support, and section-aware write controls.</p>
+      </description>
+    </release>
+    <release version="0.1.2" date="2026-08-23">
+      <description>
+        <p>Redesigned navigation, polished Proton-inspired visuals, a dedicated application
+        icon, stronger package metadata, and clearer privacy communication.</p>
+      </description>
+    </release>
+  </releases>
+</component>

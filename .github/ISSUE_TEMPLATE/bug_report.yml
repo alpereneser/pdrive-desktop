@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible problem without sharing private data
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, session data, personal filenames, or file contents. Report security issues privately through the Security tab.
+  - type: input
+    id: version
+    attributes:
+      label: PDrive Desktop version
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Linux distribution and desktop
+      placeholder: Zorin OS 18, GNOME
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce with synthetic data
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+

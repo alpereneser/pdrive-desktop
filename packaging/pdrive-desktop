@@ -1,0 +1,4 @@
+#!/usr/bin/python3
+from pdrive_desktop.bootstrap import main
+
+raise SystemExit(main())
