@@ -122,23 +122,23 @@ class LocalTransferQueue:
             self._on_update(queued.job, waiting)
             try:
                 queued.operation(queued.cancel_event)
-            except SafeApplicationError as error:
-                if error.category is ErrorCategory.CANCELLED:
+            except SafeApplicationError as application_error:
+                if application_error.category is ErrorCategory.CANCELLED:
                     if queued.job.status is TransferStatus.RUNNING:
                         queued.job = queued.job.request_cancel()
                     queued.job = queued.job.cancel()
                 else:
-                    queued.job = queued.job.fail(retryable=error.retryable)
-                    self._on_failure(error)
+                    queued.job = queued.job.fail(retryable=application_error.retryable)
+                    self._on_failure(application_error)
             except Exception:
-                error = SafeApplicationError(
+                unexpected_error = SafeApplicationError(
                     category=ErrorCategory.UNKNOWN,
                     user_message="Yerel aktarım tamamlanamadı.",
                     retryable=True,
                     correlation_id=secrets.token_hex(6),
                 )
                 queued.job = queued.job.fail(retryable=True)
-                self._on_failure(error)
+                self._on_failure(unexpected_error)
             else:
                 if queued.job.status is TransferStatus.CANCELLING:
                     queued.job = queued.job.cancel()
