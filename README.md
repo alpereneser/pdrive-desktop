@@ -56,7 +56,8 @@ are complete.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/threat-model.md`](docs/threat-model.md), and
-[`docs/design-language.md`](docs/design-language.md).
+[`docs/design-language.md`](docs/design-language.md). Planned work and release gates are
+tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Privacy and independence
 

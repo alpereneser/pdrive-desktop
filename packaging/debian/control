@@ -1,5 +1,5 @@
 Package: pdrive-desktop
-Version: 0.1.3
+Version: 0.0.0
 Section: net
 Priority: optional
 Architecture: amd64
