@@ -8,6 +8,7 @@ import pytest
 
 from pdrive_desktop.domain.drive import DrivePath, NodeKind
 from pdrive_desktop.infrastructure.proton_cli import (
+    CliError,
     ProtonCliDriveGateway,
     SecureCliRunner,
 )
@@ -54,3 +55,44 @@ def test_gateway_parses_official_cli_node_contract(tmp_path: Path) -> None:
     assert nodes[0].size == 2048
     assert nodes[0].modified_at == datetime(2026, 8, 22, 10, 30, tzinfo=UTC)
     assert str(nodes[0].path) == "/my-files/Reports\\/2026"
+
+
+def test_staged_download_commits_file_without_overwrite(tmp_path: Path) -> None:
+    staging = tmp_path / "staging"
+    destination = tmp_path / "destination"
+    staging.mkdir()
+    destination.mkdir()
+    staged_file = staging / "report.txt"
+    local_file = destination / "report.txt"
+    staged_file.write_text("remote", encoding="utf-8")
+    local_file.write_text("local", encoding="utf-8")
+
+    ProtonCliDriveGateway._commit_staged_download(staged_file, local_file)
+
+    assert local_file.read_text(encoding="utf-8") == "local"
+    assert staged_file.read_text(encoding="utf-8") == "remote"
+
+
+def test_staged_download_commits_nested_tree(tmp_path: Path) -> None:
+    staging = tmp_path / "staging"
+    destination = tmp_path / "destination"
+    nested = staging / "Documents" / "Reports"
+    nested.mkdir(parents=True)
+    destination.mkdir()
+    (nested / "report.txt").write_text("verified", encoding="utf-8")
+
+    ProtonCliDriveGateway._commit_staged_download(
+        staging / "Documents", destination / "Documents"
+    )
+
+    assert (destination / "Documents" / "Reports" / "report.txt").read_text(
+        encoding="utf-8"
+    ) == "verified"
+
+
+def test_staged_download_rejects_symbolic_link(tmp_path: Path) -> None:
+    source = tmp_path / "link"
+    source.symlink_to("/etc/passwd")
+
+    with pytest.raises(CliError, match="symbolic link"):
+        ProtonCliDriveGateway._commit_staged_download(source, tmp_path / "output")

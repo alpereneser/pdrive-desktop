@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import stat
+import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -220,19 +221,26 @@ class ProtonCliDriveGateway:
         destination = local_parent.expanduser().resolve(strict=True)
         if not destination.is_dir() or destination.is_symlink():
             raise ValueError("Download destination must be a real directory")
-        result = await self._runner.run(
-            ("filesystem", "download"),
-            (
-                "--file-conflict-strategy",
-                "skip",
-                "--folder-conflict-strategy",
-                "merge",
-                *(str(path) for path in remote_paths),
-                str(destination),
-            ),
-            timeout_seconds=24 * 60 * 60,
-        )
-        self._ensure_transfer_success(result)
+        with tempfile.TemporaryDirectory(
+            prefix=".pdrive-download-", dir=destination
+        ) as staging_name:
+            staging = Path(staging_name)
+            staging.chmod(0o700)
+            result = await self._runner.run(
+                ("filesystem", "download"),
+                (
+                    "--file-conflict-strategy",
+                    "skip",
+                    "--folder-conflict-strategy",
+                    "merge",
+                    *(str(path) for path in remote_paths),
+                    str(staging),
+                ),
+                timeout_seconds=24 * 60 * 60,
+            )
+            self._ensure_transfer_success(result)
+            for staged_item in staging.iterdir():
+                self._commit_staged_download(staged_item, destination / staged_item.name)
 
     async def trash(self, remote_paths: Sequence[DrivePath]) -> None:
         if not remote_paths:
@@ -274,6 +282,33 @@ class ProtonCliDriveGateway:
         if not (resolved.is_file() or resolved.is_dir()):
             raise ValueError("Upload item must be a regular file or directory")
         return str(resolved)
+
+    @classmethod
+    def _commit_staged_download(cls, source: Path, destination: Path) -> None:
+        """Commit CLI output without following links or replacing local data."""
+
+        if source.is_symlink():
+            raise CliError("Downloaded data contained an unsafe symbolic link")
+        if source.is_file():
+            try:
+                source.chmod(0o600)
+                os.link(source, destination, follow_symlinks=False)
+            except FileExistsError:
+                return
+            except OSError as error:
+                raise CliError("Downloaded file could not be committed safely") from error
+            source.unlink()
+            return
+        if not source.is_dir():
+            raise CliError("Downloaded data contained an unsupported file type")
+
+        try:
+            destination.mkdir(mode=0o700)
+        except FileExistsError:
+            if destination.is_symlink() or not destination.is_dir():
+                raise CliError("Download conflicts with an existing local item") from None
+        for child in source.iterdir():
+            cls._commit_staged_download(child, destination / child.name)
 
     @staticmethod
     def _ensure_transfer_success(result: CliResult) -> None:
