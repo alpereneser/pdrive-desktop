@@ -12,5 +12,5 @@ Description: Private and native Proton Drive experience for Linux
  stores account passwords. There is no PDrive backend, analytics service, or
  advertising network, and destructive operations always require confirmation.
 XB-AppName: PDrive Desktop
-XB-Icon: pdrive-desktop
+XB-Icon: io.github.alpereneser.pdrive-desktop
 XB-Category: Network

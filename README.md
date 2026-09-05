@@ -1,7 +1,7 @@
 # PDrive Desktop
 
 <p align="center">
-  <img src="packaging/io.github.pdrive.Desktop.svg" width="112" alt="PDrive Desktop icon">
+  <img src="packaging/io.github.alpereneser.pdrive-desktop.svg" width="112" alt="PDrive Desktop icon">
 </p>
 
 <p align="center"><strong>A private, native Proton Drive experience for Linux.</strong></p>
