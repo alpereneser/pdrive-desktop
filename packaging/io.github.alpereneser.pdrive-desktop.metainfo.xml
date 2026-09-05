@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.pdrive.Desktop</id>
+  <id>io.github.alpereneser.pdrive-desktop</id>
   <name>PDrive Desktop</name>
   <name xml:lang="tr">PDrive Masaüstü</name>
   <summary>A private, native Proton Drive experience for Linux</summary>
@@ -11,6 +11,10 @@
   <url type="homepage">https://github.com/alpereneser/pdrive-desktop</url>
   <url type="bugtracker">https://github.com/alpereneser/pdrive-desktop/issues</url>
   <description>
+    <p>
+      PDrive Desktop is an independent community project and is not affiliated with or
+      endorsed by Proton AG.
+    </p>
     <p>
       PDrive Desktop brings Proton Drive to Linux with a fast, native GTK interface.
       Browse folders, upload and download files, create folders, and run safe one-way
@@ -40,7 +44,7 @@
       </li>
     </ul>
   </description>
-  <icon type="stock">pdrive-desktop</icon>
+  <icon type="stock">io.github.alpereneser.pdrive-desktop</icon>
   <categories>
     <category>Network</category>
     <category>FileTransfer</category>
@@ -52,10 +56,16 @@
     <keyword xml:lang="tr">bulut depolama</keyword>
     <keyword xml:lang="tr">yedekleme</keyword>
   </keywords>
-  <launchable type="desktop-id">io.github.pdrive.Desktop.desktop</launchable>
+  <launchable type="desktop-id">io.github.alpereneser.pdrive-desktop.desktop</launchable>
   <content_rating type="oars-1.1"/>
   <provides><binary>pdrive-desktop</binary></provides>
   <releases>
+    <release version="0.1.5" date="2026-09-05">
+      <description>
+        <p>Adopted the repository-verifiable application ID and added a sandboxed
+        Flatpak build containing the checksum-pinned official Proton Drive CLI.</p>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-09-05">
       <description>
         <p>Added a local transfer queue with safe cancellation and explicit retry, remote
