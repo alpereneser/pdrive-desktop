@@ -109,7 +109,18 @@ class PrivacyBoundaryTests(unittest.TestCase):
             Path("src/pdrive_desktop/presentation"),
             Path("src/pdrive_desktop/infrastructure/proton_cli.py"),
         )
-        forbidden = ("requests", "httpx", "aiohttp", "urllib.request", "socket.")
+        forbidden = (
+            "import requests",
+            "from requests",
+            "import httpx",
+            "from httpx",
+            "import aiohttp",
+            "from aiohttp",
+            "import urllib.request",
+            "from urllib import request",
+            "import socket",
+            "from socket",
+        )
         for target in runtime_targets:
             files = target.rglob("*.py") if target.is_dir() else (target,)
             for source_file in files:
