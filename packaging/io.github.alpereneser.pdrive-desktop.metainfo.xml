@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1"/>
   <provides><binary>pdrive-desktop</binary></provides>
   <releases>
+    <release version="0.1.6" date="2026-09-05">
+      <description>
+        <p>Applied the official PDrive Desktop logo consistently across Debian,
+        Flatpak, application menus, and software-center metadata.</p>
+      </description>
+    </release>
     <release version="0.1.5" date="2026-09-05">
       <description>
         <p>Adopted the repository-verifiable application ID and added a sandboxed

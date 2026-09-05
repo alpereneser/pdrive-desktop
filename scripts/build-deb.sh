@@ -45,13 +45,19 @@ install -d -m 0755 "$stage_dir/usr/share/metainfo"
 install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.metainfo.xml" \
   "$stage_dir/usr/share/metainfo/io.github.alpereneser.pdrive-desktop.metainfo.xml"
 install -d -m 0755 "$stage_dir/usr/share/icons/hicolor/scalable/apps"
-install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
+install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.svg" \
   "$stage_dir/usr/share/icons/hicolor/scalable/apps/io.github.alpereneser.pdrive-desktop.svg"
-install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
+install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.svg" \
   "$stage_dir/usr/share/icons/hicolor/scalable/apps/pdrive-desktop.svg"
 install -d -m 0755 "$stage_dir/usr/share/pixmaps"
-install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
+install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.svg" \
   "$stage_dir/usr/share/pixmaps/pdrive-desktop.svg"
+for size in 64 128 256 512; do
+  install -d -m 0755 "$stage_dir/usr/share/icons/hicolor/${size}x${size}/apps"
+  install -m 0644 \
+    "$project_root/packaging/icons/${size}x${size}/io.github.alpereneser.pdrive-desktop.png" \
+    "$stage_dir/usr/share/icons/hicolor/${size}x${size}/apps/io.github.alpereneser.pdrive-desktop.png"
+done
 
 install -d -m 0755 "$output_dir"
 find "$stage_dir" -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
