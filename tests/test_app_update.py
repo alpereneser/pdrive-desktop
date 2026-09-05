@@ -1,4 +1,5 @@
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 
@@ -30,11 +31,16 @@ def _service(
     def run(command: tuple[str, ...], _timeout: float) -> subprocess.CompletedProcess[bytes]:
         commands.append(tuple(command))
         if command[1:3] == ("release", "view"):
-            payload = (
-                '{"tagName":"%s","isDraft":false,"isPrerelease":false,'
-                '"assets":[{"name":"%s","size":%d},'
-                '{"name":"SHA256SUMS","size":%d}]}'
-                % (version, package_name, len(package), len(manifest))
+            payload = json.dumps(
+                {
+                    "tagName": version,
+                    "isDraft": False,
+                    "isPrerelease": False,
+                    "assets": [
+                        {"name": package_name, "size": len(package)},
+                        {"name": "SHA256SUMS", "size": len(manifest)},
+                    ],
+                }
             ).encode()
             return subprocess.CompletedProcess(command, 0, payload, b"")
         if command[1:3] == ("release", "download"):

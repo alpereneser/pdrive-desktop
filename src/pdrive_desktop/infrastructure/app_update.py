@@ -24,11 +24,10 @@ CommandRunner = Callable[[Sequence[str], float], subprocess.CompletedProcess[byt
 
 
 def _run(command: Sequence[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 - caller supplies only policy-built argv
         command,
         stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
         timeout=timeout,
         env={
@@ -117,7 +116,7 @@ class VerifiedUpdateService:
         apt_get = Path("/usr/bin/apt-get")
         if not apt_get.is_file():
             raise self._failure("Sistem paket yöneticisi bulunamadı.")
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 - executable and argv are fixed locally
             (pkexec, str(apt_get), "install", "--yes", str(package)),
             stdin=subprocess.DEVNULL,
             check=False,
@@ -170,7 +169,11 @@ class VerifiedUpdateService:
     @staticmethod
     def _validate_download(path: Path, expected_size: int, maximum: int) -> None:
         info = path.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_size != expected_size or info.st_size > maximum:
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_size != expected_size
+            or info.st_size > maximum
+        ):
             raise VerifiedUpdateService._failure("İndirilen güncelleme dosyası geçersiz.")
         path.chmod(0o600)
 

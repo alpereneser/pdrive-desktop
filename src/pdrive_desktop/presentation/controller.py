@@ -8,6 +8,7 @@ from pathlib import Path
 
 from gi.repository import GLib
 
+from pdrive_desktop.application.errors import SafeApplicationError
 from pdrive_desktop.application.ports import (
     Authenticate,
     BackupFolder,
@@ -17,16 +18,14 @@ from pdrive_desktop.application.ports import (
     TrashItems,
     UploadItems,
 )
-from pdrive_desktop.application.errors import SafeApplicationError
 from pdrive_desktop.application.transfer_queue import LocalTransferQueue
 from pdrive_desktop.domain.drive import DriveNode, DrivePath
 from pdrive_desktop.domain.transfer import TransferJob, TransferKind, TransferStatus
 from pdrive_desktop.domain.update import AppVersion, PreparedUpdate
-from pdrive_desktop.infrastructure.app_update import VerifiedUpdateService
 from pdrive_desktop.infrastructure.app_paths import AppPaths
+from pdrive_desktop.infrastructure.app_update import VerifiedUpdateService
 from pdrive_desktop.infrastructure.cli_release import CliInstaller
 from pdrive_desktop.infrastructure.proton_cli import (
-    CliError,
     ProtonCliAuthenticationGateway,
     ProtonCliDriveGateway,
     SecureCliRunner,
@@ -245,7 +244,7 @@ class DesktopController:
         if update is None:
             return
         self._updates.install(update)
-        self._dispatch(self._on_state, "Güncelleme kuruldu · PDrive’ı yeniden başlatın")
+        self._dispatch(self._on_state, "Güncelleme kuruldu · PDrive'ı yeniden başlatın")
         self._prepared_update = None
         self._updates.cleanup()
 
