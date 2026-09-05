@@ -23,6 +23,17 @@ jobs:
       - run: pytest
       - run: ruff check .
       - run: mypy
+      - name: Build Debian package twice reproducibly
+        run: |
+          ./scripts/build-deb.sh
+          first_hash=$(sha256sum dist/*.deb | cut -d ' ' -f1)
+          first_package=$(find dist -maxdepth 1 -name '*.deb' -print -quit)
+          dpkg-deb --info "$first_package"
+          dpkg-deb --contents "$first_package"
+          mv "$first_package" /tmp/pdrive-first.deb
+          ./scripts/build-deb.sh
+          second_hash=$(sha256sum dist/*.deb | cut -d ' ' -f1)
+          test "$first_hash" = "$second_hash"
       - name: Reject common secret patterns
         run: |
           if git grep -nE 'BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|github_pat_|gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}' -- ':!.github/workflows/ci.yml'; then

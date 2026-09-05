@@ -3,6 +3,7 @@ set -eu
 
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 output_dir="$project_root/dist"
+project_version=$(python3 -c 'import pathlib,sys,tomllib; print(tomllib.loads(pathlib.Path(sys.argv[1]).read_text())["project"]["version"])' "$project_root/pyproject.toml")
 SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-1787356800}
 export SOURCE_DATE_EPOCH
 stage_dir=$(mktemp -d -t pdrive-deb.XXXXXX)
@@ -11,6 +12,7 @@ chmod 0755 "$stage_dir"
 
 install -d -m 0755 "$stage_dir/DEBIAN"
 install -m 0644 "$project_root/packaging/debian/control" "$stage_dir/DEBIAN/control"
+sed -i "s/^Version: .*/Version: $project_version/" "$stage_dir/DEBIAN/control"
 install -d -m 0755 "$stage_dir/usr/share/doc/pdrive-desktop"
 install -m 0644 "$project_root/packaging/debian/copyright" \
   "$stage_dir/usr/share/doc/pdrive-desktop/copyright"
@@ -42,4 +44,5 @@ install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
 
 install -d -m 0755 "$output_dir"
 find "$stage_dir" -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
-dpkg-deb --root-owner-group --build "$stage_dir" "$output_dir/pdrive-desktop_0.1.3_amd64.deb"
+dpkg-deb --root-owner-group --build \
+  "$stage_dir" "$output_dir/pdrive-desktop_${project_version}_amd64.deb"
