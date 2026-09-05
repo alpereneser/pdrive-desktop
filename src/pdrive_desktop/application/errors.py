@@ -11,6 +11,7 @@ class ErrorCategory(StrEnum):
     RATE_LIMIT = "rate-limit"
     PERMISSION = "permission"
     TIMEOUT = "timeout"
+    CANCELLED = "cancelled"
     UNSUPPORTED_RESPONSE = "unsupported-response"
     UNKNOWN = "unknown"
 
@@ -24,4 +25,3 @@ class SafeApplicationError(RuntimeError):
 
     def __str__(self) -> str:
         return f"{self.user_message} (Referans: {self.correlation_id})"
-

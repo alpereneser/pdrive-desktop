@@ -4,8 +4,11 @@ import asyncio
 import json
 import os
 import secrets
+import signal
 import stat
 import tempfile
+import threading
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -94,9 +97,16 @@ class CliResult:
 
 
 class SecureCliRunner:
-    def __init__(self, executable: Path, *, timeout_seconds: float = 60.0) -> None:
+    def __init__(
+        self,
+        executable: Path,
+        *,
+        timeout_seconds: float = 60.0,
+        cancel_event: threading.Event | None = None,
+    ) -> None:
         self._executable = executable.expanduser().resolve(strict=True)
         self._timeout = timeout_seconds
+        self._cancel_event = cancel_event
         self._validate_executable()
 
     def _validate_executable(self) -> None:
@@ -130,19 +140,40 @@ class SecureCliRunner:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=self._safe_environment(),
+            start_new_session=True,
         )
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                asyncio.gather(
-                    self._read_limited(process.stdout),
-                    self._read_limited(process.stderr),
-                ),
-                timeout=timeout_seconds or self._timeout,
+        output_task = asyncio.ensure_future(
+            asyncio.gather(
+                self._read_limited(process.stdout),
+                self._read_limited(process.stderr),
             )
+        )
+        deadline = time.monotonic() + (timeout_seconds or self._timeout)
+        try:
+            while not output_task.done():
+                if self._cancel_event is not None and self._cancel_event.is_set():
+                    raise _safe_error(
+                        ErrorCategory.CANCELLED,
+                        "Aktarım iptal edildi.",
+                        retryable=False,
+                    )
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(output_task), timeout=min(0.2, remaining)
+                    )
+                except TimeoutError:
+                    continue
+            stdout, stderr = await output_task
             await process.wait()
         except (TimeoutError, CliError) as error:
-            process.kill()
+            self._kill_owned_process_group(process)
             await process.wait()
+            if not output_task.done():
+                output_task.cancel()
+            await asyncio.gather(output_task, return_exceptions=True)
             if isinstance(error, CliError):
                 raise
             raise _safe_error(
@@ -154,6 +185,14 @@ class SecureCliRunner:
         if process.returncode != 0:
             raise _classify_cli_failure(stderr)
         return CliResult(stdout=stdout, stderr=stderr)
+
+    @staticmethod
+    def _kill_owned_process_group(process: asyncio.subprocess.Process) -> None:
+        """Stop the isolated CLI process tree without touching unrelated processes."""
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
 
     @staticmethod
     async def _read_limited(stream: asyncio.StreamReader | None) -> bytes:

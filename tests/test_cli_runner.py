@@ -1,6 +1,8 @@
 import asyncio
 import json
 import stat
+import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,6 +34,26 @@ def test_runner_rejects_non_allowlisted_operation(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="not allowed"):
         asyncio.run(runner.run(("filesystem", "remove"), ("/my-files/x",)))
+
+
+def test_runner_cancels_only_its_owned_process(tmp_path: Path) -> None:
+    executable = tmp_path / "proton-drive"
+    executable.write_text("#!/bin/sh\nsleep 30\n", encoding="utf-8")
+    executable.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+    cancel_event = threading.Event()
+    timer = threading.Timer(0.1, cancel_event.set)
+    timer.start()
+    started = time.monotonic()
+    try:
+        with pytest.raises(CliError) as captured:
+            asyncio.run(
+                SecureCliRunner(executable, cancel_event=cancel_event).run(("version",))
+            )
+    finally:
+        timer.cancel()
+
+    assert captured.value.category is ErrorCategory.CANCELLED
+    assert time.monotonic() - started < 2
 
 
 def test_gateway_parses_official_cli_node_contract(tmp_path: Path) -> None:
