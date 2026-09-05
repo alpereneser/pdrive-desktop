@@ -6,8 +6,10 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from pdrive_desktop.domain.drive import DrivePath, NodeKind
+from pdrive_desktop.infrastructure.app_paths import AppPaths
 from pdrive_desktop.infrastructure.cli_release import OFFICIAL_LINUX_X64
 from pdrive_desktop.infrastructure.proton_cli import (
     ProtonCliDriveGateway,
@@ -102,6 +104,15 @@ class CliBoundaryTests(unittest.TestCase):
 
 
 class PrivacyBoundaryTests(unittest.TestCase):
+    def test_flatpak_uses_bundled_official_cli(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"FLATPAK_ID": "io.github.alpereneser.pdrive-desktop"},
+            clear=True,
+        ):
+            paths = AppPaths.from_environment()
+            self.assertEqual(paths.cli_executable, Path("/app/libexec/proton-drive"))
+
     def test_runtime_has_no_direct_http_client(self) -> None:
         runtime_targets = (
             Path("src/pdrive_desktop/domain"),

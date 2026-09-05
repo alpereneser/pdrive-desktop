@@ -18,5 +18,6 @@ class AppPaths:
 
     @property
     def cli_executable(self) -> Path:
+        if os.environ.get("FLATPAK_ID") == "io.github.alpereneser.pdrive-desktop":
+            return Path("/app/libexec/proton-drive")
         return self.data_dir / "bin" / "proton-drive"
-

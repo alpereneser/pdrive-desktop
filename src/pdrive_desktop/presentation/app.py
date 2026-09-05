@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -15,7 +16,7 @@ from pdrive_desktop.presentation.controller import DesktopController
 
 class PDriveApplication(Adw.Application):
     def __init__(self) -> None:
-        super().__init__(application_id="io.github.pdrive.Desktop")
+        super().__init__(application_id="io.github.alpereneser.pdrive-desktop")
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
@@ -76,6 +77,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_button = Gtk.Button(
             icon_name="software-update-available-symbolic",
             tooltip_text="Güvenli güncelleme denetimi",
+        )
+        self._update_button.set_visible(
+            "FLATPAK_ID" not in os.environ and "SNAP" not in os.environ
         )
         self._back_button = Gtk.Button(
             icon_name="go-up-symbolic", tooltip_text="Üst klasör"
@@ -161,7 +165,11 @@ class MainWindow(Adw.ApplicationWindow):
         box.set_size_request(250, -1)
         brand = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         brand.set_margin_bottom(14)
-        brand.append(Gtk.Image(icon_name="pdrive-desktop", pixel_size=36))
+        brand.append(
+            Gtk.Image(
+                icon_name="io.github.alpereneser.pdrive-desktop", pixel_size=36
+            )
+        )
         brand_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         title = Gtk.Label(label="PDrive", xalign=0)
         title.add_css_class("brand-title")

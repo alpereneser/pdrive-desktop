@@ -110,7 +110,9 @@ are complete.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/threat-model.md`](docs/threat-model.md), and
-[`docs/design-language.md`](docs/design-language.md). Planned work and release gates are
+[`docs/design-language.md`](docs/design-language.md). Store packaging and its human-review
+boundary are documented in [`docs/store-distribution.md`](docs/store-distribution.md).
+Planned work and release gates are
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Privacy and independence

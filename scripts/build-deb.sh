@@ -39,14 +39,14 @@ install -d -m 0755 "$stage_dir/usr/bin"
 install -m 0755 "$project_root/packaging/pdrive-desktop" "$stage_dir/usr/bin/pdrive-desktop"
 
 install -d -m 0755 "$stage_dir/usr/share/applications"
-install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.desktop" \
-  "$stage_dir/usr/share/applications/io.github.pdrive.Desktop.desktop"
+install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.desktop" \
+  "$stage_dir/usr/share/applications/io.github.alpereneser.pdrive-desktop.desktop"
 install -d -m 0755 "$stage_dir/usr/share/metainfo"
-install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.metainfo.xml" \
-  "$stage_dir/usr/share/metainfo/io.github.pdrive.Desktop.metainfo.xml"
+install -m 0644 "$project_root/packaging/io.github.alpereneser.pdrive-desktop.metainfo.xml" \
+  "$stage_dir/usr/share/metainfo/io.github.alpereneser.pdrive-desktop.metainfo.xml"
 install -d -m 0755 "$stage_dir/usr/share/icons/hicolor/scalable/apps"
 install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
-  "$stage_dir/usr/share/icons/hicolor/scalable/apps/io.github.pdrive.Desktop.svg"
+  "$stage_dir/usr/share/icons/hicolor/scalable/apps/io.github.alpereneser.pdrive-desktop.svg"
 install -m 0644 "$project_root/packaging/io.github.pdrive.Desktop.svg" \
   "$stage_dir/usr/share/icons/hicolor/scalable/apps/pdrive-desktop.svg"
 install -d -m 0755 "$stage_dir/usr/share/pixmaps"

@@ -1,0 +1,35 @@
+id: io.github.alpereneser.pdrive-desktop
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+command: pdrive-desktop
+build-options:
+  no-debuginfo: true
+  strip: false
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --talk-name=org.freedesktop.secrets
+modules:
+  - name: proton-drive-cli
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 proton-drive /app/libexec/proton-drive
+    sources:
+      - type: file
+        url: https://proton.me/download/drive/cli/0.8.0/linux-x64/proton-drive
+        sha512: cf61c2688c45e1055d8add6221d9471a5a5b64bf3bcdb86460f5cb18414596cc4df3cdb6627c9097c94bec32a3c9915ada3211ef2ae5be33c46ebbc996ccaa28
+  - name: pdrive-desktop
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 packaging/flatpak/pdrive-desktop /app/bin/pdrive-desktop
+      - mkdir -p /app/lib/pdrive-desktop
+      - cp -R src/pdrive_desktop /app/lib/pdrive-desktop/
+      - install -Dm644 packaging/io.github.alpereneser.pdrive-desktop.desktop /app/share/applications/io.github.alpereneser.pdrive-desktop.desktop
+      - install -Dm644 packaging/io.github.alpereneser.pdrive-desktop.metainfo.xml /app/share/metainfo/io.github.alpereneser.pdrive-desktop.metainfo.xml
+      - install -Dm644 packaging/io.github.pdrive.Desktop.svg /app/share/icons/hicolor/scalable/apps/io.github.alpereneser.pdrive-desktop.svg
+    sources:
+      - type: dir
+        path: ../..

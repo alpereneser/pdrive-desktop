@@ -7,6 +7,8 @@ __pycache__/
 .venv/
 venv/
 build/
+.flatpak-build/
+.flatpak-builder/
 dist/
 *.deb
 *.asc
@@ -20,4 +22,3 @@ secrets/
 .idea/
 .vscode/
 *~
-
