@@ -33,5 +33,7 @@ modules:
       - install -Dm644 packaging/icons/128x128/io.github.alpereneser.pdrive-desktop.png /app/share/icons/hicolor/128x128/apps/io.github.alpereneser.pdrive-desktop.png
       - install -Dm644 packaging/icons/256x256/io.github.alpereneser.pdrive-desktop.png /app/share/icons/hicolor/256x256/apps/io.github.alpereneser.pdrive-desktop.png
     sources:
-      - type: dir
-        path: ../..
+      - type: git
+        url: https://github.com/alpereneser/pdrive-desktop.git
+        tag: v0.1.6
+        commit: 3d7e7539c3fe610529ba492210c578e4cb73273d
