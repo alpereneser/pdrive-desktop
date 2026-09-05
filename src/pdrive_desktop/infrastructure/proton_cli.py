@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 import stat
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -11,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from pdrive_desktop.application.errors import ErrorCategory, SafeApplicationError
 from pdrive_desktop.domain.drive import DriveNode, DrivePath, NodeKind
 
 _MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -28,8 +30,61 @@ _ALLOWED_OPERATIONS = frozenset(
 )
 
 
-class CliError(RuntimeError):
+class CliError(SafeApplicationError):
     """Safe error raised when the official CLI invocation fails."""
+
+
+def _safe_error(
+    category: ErrorCategory,
+    message: str,
+    *,
+    retryable: bool,
+) -> CliError:
+    return CliError(
+        category=category,
+        user_message=message,
+        retryable=retryable,
+        correlation_id=secrets.token_hex(6),
+    )
+
+
+def _classify_cli_failure(stderr: bytes) -> CliError:
+    normalized = stderr.decode("utf-8", errors="replace").casefold()
+    if any(marker in normalized for marker in ("not authenticated", "session expired", "login")):
+        return _safe_error(
+            ErrorCategory.AUTHENTICATION,
+            "Proton oturumunun yenilenmesi gerekiyor.",
+            retryable=False,
+        )
+    if any(marker in normalized for marker in ("offline", "network", "connection", "dns")):
+        return _safe_error(
+            ErrorCategory.OFFLINE,
+            "Ağ bağlantısı kurulamadı. Bağlantınızı kontrol edip yeniden deneyin.",
+            retryable=True,
+        )
+    if any(marker in normalized for marker in ("quota", "storage limit", "insufficient storage")):
+        return _safe_error(
+            ErrorCategory.QUOTA,
+            "Proton Drive depolama alanı yetersiz.",
+            retryable=False,
+        )
+    if any(marker in normalized for marker in ("rate limit", "too many requests", "429")):
+        return _safe_error(
+            ErrorCategory.RATE_LIMIT,
+            "Proton geçici bir istek sınırı uyguladı. Bir süre sonra yeniden deneyin.",
+            retryable=True,
+        )
+    if any(marker in normalized for marker in ("permission denied", "access denied", "eacces")):
+        return _safe_error(
+            ErrorCategory.PERMISSION,
+            "İşlem için gerekli yerel veya uzak izin bulunamadı.",
+            retryable=False,
+        )
+    return _safe_error(
+        ErrorCategory.UNKNOWN,
+        "Proton Drive işlemi tamamlanamadı.",
+        retryable=True,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,10 +145,14 @@ class SecureCliRunner:
             await process.wait()
             if isinstance(error, CliError):
                 raise
-            raise CliError("Proton Drive operation timed out") from error
+            raise _safe_error(
+                ErrorCategory.TIMEOUT,
+                "Proton Drive işlemi zaman aşımına uğradı.",
+                retryable=True,
+            ) from error
 
         if process.returncode != 0:
-            raise CliError("Proton Drive operation failed; see redacted diagnostic logs")
+            raise _classify_cli_failure(stderr)
         return CliResult(stdout=stdout, stderr=stderr)
 
     @staticmethod
@@ -104,7 +163,11 @@ class SecureCliRunner:
         while chunk := await stream.read(64 * 1024):
             output.extend(chunk)
             if len(output) > _MAX_OUTPUT_BYTES:
-                raise CliError("Proton Drive response exceeded the safety limit")
+                raise _safe_error(
+                    ErrorCategory.UNSUPPORTED_RESPONSE,
+                    "Proton Drive yanıtı güvenlik sınırını aştı.",
+                    retryable=False,
+                )
         return bytes(output)
 
     @staticmethod
@@ -141,7 +204,11 @@ class ProtonCliDriveGateway:
             items = payload if isinstance(payload, list) else payload["items"]
             return tuple(self._parse_listing_item(item, path) for item in items)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-            raise CliError("Proton Drive returned an unsupported response") from error
+            raise _safe_error(
+                ErrorCategory.UNSUPPORTED_RESPONSE,
+                "Proton Drive beklenmeyen bir yanıt döndürdü.",
+                retryable=False,
+            ) from error
 
     @staticmethod
     def _parse_listing_item(item: Mapping[str, Any], parent: DrivePath) -> DriveNode:
@@ -288,7 +355,11 @@ class ProtonCliDriveGateway:
         """Commit CLI output without following links or replacing local data."""
 
         if source.is_symlink():
-            raise CliError("Downloaded data contained an unsafe symbolic link")
+            raise _safe_error(
+                ErrorCategory.PERMISSION,
+                "İndirilen veri güvenli olmayan bir sembolik bağlantı içeriyor.",
+                retryable=False,
+            )
         if source.is_file():
             try:
                 source.chmod(0o600)
@@ -296,17 +367,29 @@ class ProtonCliDriveGateway:
             except FileExistsError:
                 return
             except OSError as error:
-                raise CliError("Downloaded file could not be committed safely") from error
+                raise _safe_error(
+                    ErrorCategory.PERMISSION,
+                    "İndirilen dosya güvenli biçimde hedefe taşınamadı.",
+                    retryable=False,
+                ) from error
             source.unlink()
             return
         if not source.is_dir():
-            raise CliError("Downloaded data contained an unsupported file type")
+            raise _safe_error(
+                ErrorCategory.UNSUPPORTED_RESPONSE,
+                "İndirilen veri desteklenmeyen bir dosya türü içeriyor.",
+                retryable=False,
+            )
 
         try:
             destination.mkdir(mode=0o700)
         except FileExistsError:
             if destination.is_symlink() or not destination.is_dir():
-                raise CliError("Download conflicts with an existing local item") from None
+                raise _safe_error(
+                    ErrorCategory.PERMISSION,
+                    "İndirme mevcut bir yerel öğeyle çakışıyor.",
+                    retryable=False,
+                ) from None
         for child in source.iterdir():
             cls._commit_staged_download(child, destination / child.name)
 
@@ -315,9 +398,17 @@ class ProtonCliDriveGateway:
         try:
             summary = json.loads(result.stdout)
             if not isinstance(summary, Mapping) or int(summary["failedItems"]) != 0:
-                raise CliError("One or more transfer items failed")
+                raise _safe_error(
+                    ErrorCategory.UNKNOWN,
+                    "Bir veya daha fazla aktarım öğesi tamamlanamadı.",
+                    retryable=True,
+                )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-            raise CliError("Proton Drive returned an unsupported transfer summary") from error
+            raise _safe_error(
+                ErrorCategory.UNSUPPORTED_RESPONSE,
+                "Proton Drive beklenmeyen bir aktarım özeti döndürdü.",
+                retryable=False,
+            ) from error
 
 
 class ProtonCliAuthenticationGateway:

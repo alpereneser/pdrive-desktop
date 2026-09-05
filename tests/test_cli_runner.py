@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from pdrive_desktop.application.errors import ErrorCategory
 from pdrive_desktop.domain.drive import DrivePath, NodeKind
 from pdrive_desktop.infrastructure.proton_cli import (
     CliError,
@@ -94,5 +95,39 @@ def test_staged_download_rejects_symbolic_link(tmp_path: Path) -> None:
     source = tmp_path / "link"
     source.symlink_to("/etc/passwd")
 
-    with pytest.raises(CliError, match="symbolic link"):
+    with pytest.raises(CliError) as captured:
         ProtonCliDriveGateway._commit_staged_download(source, tmp_path / "output")
+
+    assert captured.value.category is ErrorCategory.PERMISSION
+
+
+@pytest.mark.parametrize(
+    ("stderr", "category", "retryable"),
+    [
+        ("network connection failed", ErrorCategory.OFFLINE, True),
+        ("session expired; login required", ErrorCategory.AUTHENTICATION, False),
+        ("storage quota exceeded", ErrorCategory.QUOTA, False),
+        ("HTTP 429 too many requests", ErrorCategory.RATE_LIMIT, True),
+        ("permission denied", ErrorCategory.PERMISSION, False),
+        ("unclassified failure /home/private.txt", ErrorCategory.UNKNOWN, True),
+    ],
+)
+def test_runner_classifies_failure_without_leaking_stderr(
+    tmp_path: Path,
+    stderr: str,
+    category: ErrorCategory,
+    retryable: bool,
+) -> None:
+    executable = tmp_path / "proton-drive"
+    executable.write_text(
+        f"#!/bin/sh\nprintf '%s' '{stderr}' >&2\nexit 1\n", encoding="utf-8"
+    )
+    executable.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+    with pytest.raises(CliError) as captured:
+        asyncio.run(SecureCliRunner(executable).run(("version",)))
+
+    assert captured.value.category is category
+    assert captured.value.retryable is retryable
+    assert stderr not in str(captured.value)
+    assert len(captured.value.correlation_id) == 12

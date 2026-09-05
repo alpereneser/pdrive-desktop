@@ -29,6 +29,8 @@ components. No domain or infrastructure behavior may move into those widgets.
 
 ## Error model
 
-Infrastructure errors are translated into typed application errors. Raw CLI stderr is
-kept out of user-facing messages until it has been redacted. Commands carry a correlation
-ID, but paths and filenames are excluded from normal telemetry.
+Infrastructure errors are translated into typed application errors for offline,
+authentication, quota, rate-limit, permission, timeout, unsupported-response, and unknown
+failures. Raw CLI stderr is used only for local classification and is never placed in the
+exception text or user interface. Each failure receives a random local correlation ID; paths,
+filenames, and identifiers are not transmitted because PDrive has no telemetry endpoint.
