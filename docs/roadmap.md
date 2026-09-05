@@ -16,7 +16,8 @@ by visual appeal.
   owned-process cancellation, and explicit retry. Completed in 0.1.3.
 - Resumable transfers when the official CLI exposes a stable resume/progress contract.
 - Downloads staged in a private directory and atomically committed without overwriting.
-- Verification that a completed backup contains every expected remote item.
+- Local-only verification that a completed backup contains every expected remote item,
+  with type and file-size checks. Completed in 0.1.3.
 - Clear offline, authentication-expired, quota, and rate-limit states.
 
 ## Desktop integration

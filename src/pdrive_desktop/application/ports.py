@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
+from pdrive_desktop.domain.backup import BackupVerification
 from pdrive_desktop.domain.drive import DriveNode, DrivePath
 
 
@@ -26,7 +27,9 @@ class FileOperationsGateway(Protocol):
 
     async def trash(self, remote_paths: Sequence[DrivePath]) -> None: ...
 
-    async def sync_backup(self, local_folder: Path, parent: DrivePath) -> None: ...
+    async def sync_backup(
+        self, local_folder: Path, parent: DrivePath
+    ) -> BackupVerification: ...
 
 
 class ListFolder:
@@ -91,5 +94,7 @@ class BackupFolder:
     def __init__(self, gateway: FileOperationsGateway) -> None:
         self._gateway = gateway
 
-    async def execute(self, local_folder: Path, parent: DrivePath) -> None:
-        await self._gateway.sync_backup(local_folder, parent)
+    async def execute(
+        self, local_folder: Path, parent: DrivePath
+    ) -> BackupVerification:
+        return await self._gateway.sync_backup(local_folder, parent)

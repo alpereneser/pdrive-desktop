@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from pdrive_desktop.application.errors import ErrorCategory, SafeApplicationError
+from pdrive_desktop.domain.backup import BackupVerification
 from pdrive_desktop.domain.drive import DriveNode, DrivePath, NodeKind
 
 _MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -357,10 +358,14 @@ class ProtonCliDriveGateway:
             json_output=False,
         )
 
-    async def sync_backup(self, local_folder: Path, parent: DrivePath) -> None:
+    async def sync_backup(
+        self, local_folder: Path, parent: DrivePath
+    ) -> BackupVerification:
         validated = self._validate_upload_path(local_folder)
-        if not Path(validated).is_dir():
+        source = Path(validated)
+        if not source.is_dir():
             raise ValueError("Backup source must be a directory")
+        self._validate_backup_tree(source)
         arguments = (
             "--file-conflict-strategy",
             "create-new-revision",
@@ -378,6 +383,102 @@ class ProtonCliDriveGateway:
                 timeout_seconds=24 * 60 * 60,
             )
             self._ensure_transfer_success(result)
+        report = await self._verify_backup_tree(source, parent.child(source.name))
+        if not report.complete:
+            raise _safe_error(
+                ErrorCategory.UNKNOWN,
+                (
+                    "Yedekleme uzak hedefte eksiksiz doğrulanamadı: "
+                    f"{report.verified_items} doğrulandı, "
+                    f"{report.missing_items} eksik, "
+                    f"{report.mismatched_items} uyuşmazlık."
+                ),
+                retryable=True,
+            )
+        return report
+
+    @staticmethod
+    def _validate_backup_tree(root: Path) -> None:
+        checked = 0
+        pending = [root]
+        try:
+            while pending:
+                directory = pending.pop()
+                for child in directory.iterdir():
+                    checked += 1
+                    if checked > 1_000_000:
+                        raise _safe_error(
+                            ErrorCategory.UNSUPPORTED_RESPONSE,
+                            "Yedekleme güvenli öğe sınırını aşıyor.",
+                            retryable=False,
+                        )
+                    if child.is_symlink():
+                        raise _safe_error(
+                            ErrorCategory.PERMISSION,
+                            "Yedekleme sembolik bağlantı içeremez.",
+                            retryable=False,
+                        )
+                    if child.is_dir():
+                        pending.append(child)
+                    elif not child.is_file():
+                        raise _safe_error(
+                            ErrorCategory.UNSUPPORTED_RESPONSE,
+                            "Yedekleme desteklenmeyen özel bir dosya içeriyor.",
+                            retryable=False,
+                        )
+        except OSError as error:
+            raise _safe_error(
+                ErrorCategory.PERMISSION,
+                "Yedekleme klasörü güvenli biçimde okunamadı.",
+                retryable=False,
+            ) from error
+
+    async def _verify_backup_tree(
+        self, local_root: Path, remote_root: DrivePath
+    ) -> BackupVerification:
+        files = 0
+        folders = 1
+        missing = 0
+        mismatched = 0
+        pending = [(local_root, remote_root)]
+        while pending:
+            local_directory, remote_directory = pending.pop()
+            remote_nodes = await self.list_nodes(remote_directory)
+            remote_by_name: dict[str, list[DriveNode]] = {}
+            for node in remote_nodes:
+                remote_by_name.setdefault(node.name, []).append(node)
+            try:
+                local_items = tuple(local_directory.iterdir())
+            except OSError as error:
+                raise _safe_error(
+                    ErrorCategory.PERMISSION,
+                    "Doğrulama sırasında yerel yedekleme okunamadı.",
+                    retryable=True,
+                ) from error
+            for local_item in local_items:
+                candidates = remote_by_name.get(local_item.name, [])
+                if not candidates:
+                    missing += 1
+                    continue
+                if len(candidates) != 1:
+                    mismatched += 1
+                    continue
+                remote_item = candidates[0]
+                if local_item.is_dir() and not local_item.is_symlink():
+                    if remote_item.kind is not NodeKind.FOLDER:
+                        mismatched += 1
+                        continue
+                    folders += 1
+                    pending.append((local_item, remote_item.path))
+                elif local_item.is_file() and not local_item.is_symlink():
+                    size = local_item.stat().st_size
+                    if remote_item.kind is not NodeKind.FILE or remote_item.size != size:
+                        mismatched += 1
+                    else:
+                        files += 1
+                else:
+                    mismatched += 1
+        return BackupVerification(files, folders, missing, mismatched)
 
     @staticmethod
     def _validate_upload_path(path: Path) -> str:
