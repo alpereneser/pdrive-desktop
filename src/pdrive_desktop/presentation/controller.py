@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.metadata
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from gi.repository import GLib
 
+from pdrive_desktop.application.errors import SafeApplicationError
 from pdrive_desktop.application.ports import (
     Authenticate,
     BackupFolder,
@@ -19,10 +21,11 @@ from pdrive_desktop.application.ports import (
 from pdrive_desktop.application.transfer_queue import LocalTransferQueue
 from pdrive_desktop.domain.drive import DriveNode, DrivePath
 from pdrive_desktop.domain.transfer import TransferJob, TransferKind, TransferStatus
+from pdrive_desktop.domain.update import AppVersion, PreparedUpdate
 from pdrive_desktop.infrastructure.app_paths import AppPaths
+from pdrive_desktop.infrastructure.app_update import VerifiedUpdateService
 from pdrive_desktop.infrastructure.cli_release import CliInstaller
 from pdrive_desktop.infrastructure.proton_cli import (
-    CliError,
     ProtonCliAuthenticationGateway,
     ProtonCliDriveGateway,
     SecureCliRunner,
@@ -32,6 +35,7 @@ NodesCallback = Callable[[DrivePath, Sequence[DriveNode]], object]
 ErrorCallback = Callable[[str], object]
 StateCallback = Callable[[str], object]
 TransferCallback = Callable[[TransferJob, int], object]
+UpdateCallback = Callable[[PreparedUpdate], object]
 
 
 class DesktopController:
@@ -44,12 +48,14 @@ class DesktopController:
         on_error: ErrorCallback,
         on_state: StateCallback,
         on_transfer: TransferCallback,
+        on_update_ready: UpdateCallback,
         paths: AppPaths | None = None,
     ) -> None:
         self._on_nodes = on_nodes
         self._on_error = on_error
         self._on_state = on_state
         self._on_transfer = on_transfer
+        self._on_update_ready = on_update_ready
         self._paths = paths or AppPaths.from_environment()
         self._busy_lock = threading.Lock()
         self._current_path = DrivePath.parse("/my-files")
@@ -61,6 +67,8 @@ class DesktopController:
             on_update=self._transfer_updated,
             on_failure=lambda error: self._dispatch(self._on_error, str(error)),
         )
+        self._updates = VerifiedUpdateService()
+        self._prepared_update: PreparedUpdate | None = None
 
     def connect(self) -> None:
         self._start(self._connect, "Resmî Proton Drive CLI hazırlanıyor…")
@@ -141,6 +149,14 @@ class DesktopController:
 
     def shutdown(self) -> None:
         self._transfers.shutdown()
+        self._updates.cleanup()
+
+    def check_for_updates(self) -> None:
+        self._start(self._check_for_updates, "Güncelleme güvenle denetleniyor…")
+
+    def install_prepared_update(self) -> None:
+        if self._prepared_update is not None:
+            self._start(self._install_prepared_update, "Güncelleme kuruluyor…")
 
     def _start(self, target: Callable[[], None], state: str) -> None:
         if not self._busy_lock.acquire(blocking=False):
@@ -150,7 +166,7 @@ class DesktopController:
         def worker() -> None:
             try:
                 target()
-            except (CliError, OSError, RuntimeError, ValueError) as error:
+            except (SafeApplicationError, OSError, RuntimeError, ValueError) as error:
                 self._dispatch(self._on_state, "İşlem durdu")
                 self._dispatch(self._on_error, self._safe_message(error))
             finally:
@@ -213,6 +229,25 @@ class DesktopController:
         asyncio.run(BackupFolder(gateway).execute(path, self._current_path))
         self._refresh_with(runner)
 
+    def _check_for_updates(self) -> None:
+        current = AppVersion.parse(importlib.metadata.version("pdrive-desktop"))
+        update = self._updates.prepare(current)
+        if update is None:
+            self._dispatch(self._on_state, "PDrive güncel")
+            return
+        self._prepared_update = update
+        self._dispatch(self._on_state, "Doğrulanmış güncelleme hazır")
+        self._dispatch(self._on_update_ready, update)
+
+    def _install_prepared_update(self) -> None:
+        update = self._prepared_update
+        if update is None:
+            return
+        self._updates.install(update)
+        self._dispatch(self._on_state, "Güncelleme kuruldu · PDrive'ı yeniden başlatın")
+        self._prepared_update = None
+        self._updates.cleanup()
+
     def _runner(self, cancelled: threading.Event | None = None) -> SecureCliRunner:
         return SecureCliRunner(self._paths.cli_executable, cancel_event=cancelled)
 
@@ -236,7 +271,7 @@ class DesktopController:
 
     @staticmethod
     def _safe_message(error: Exception) -> str:
-        if isinstance(error, CliError):
+        if isinstance(error, SafeApplicationError):
             return str(error)
         return "Yerel Proton Drive bileşeni hazırlanamadı."
 

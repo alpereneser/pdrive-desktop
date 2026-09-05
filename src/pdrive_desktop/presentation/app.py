@@ -9,6 +9,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from pdrive_desktop.domain.drive import DriveNode, DrivePath, NodeKind
 from pdrive_desktop.domain.transfer import TransferJob, TransferKind, TransferStatus
+from pdrive_desktop.domain.update import PreparedUpdate
 from pdrive_desktop.presentation.controller import DesktopController
 
 
@@ -72,6 +73,10 @@ class MainWindow(Adw.ApplicationWindow):
         self._refresh_button = Gtk.Button(
             icon_name="view-refresh-symbolic", tooltip_text="Yenile"
         )
+        self._update_button = Gtk.Button(
+            icon_name="software-update-available-symbolic",
+            tooltip_text="Güvenli güncelleme denetimi",
+        )
         self._back_button = Gtk.Button(
             icon_name="go-up-symbolic", tooltip_text="Üst klasör"
         )
@@ -108,9 +113,13 @@ class MainWindow(Adw.ApplicationWindow):
             on_error=self._show_error,
             on_state=self._show_state,
             on_transfer=self._show_transfer,
+            on_update_ready=self._show_update_ready,
         )
         self._connect_button.connect("clicked", lambda _button: self._controller.connect())
         self._refresh_button.connect("clicked", lambda _button: self._controller.refresh())
+        self._update_button.connect(
+            "clicked", lambda _button: self._controller.check_for_updates()
+        )
         self._back_button.connect("clicked", lambda _button: self._controller.go_up())
         self._upload_button.connect("clicked", self._choose_upload_files)
         self._upload_folder_button.connect("clicked", self._choose_upload_folder)
@@ -137,6 +146,7 @@ class MainWindow(Adw.ApplicationWindow):
         header.set_title_widget(self._window_title)
         header.pack_start(self._back_button)
         header.pack_end(self._refresh_button)
+        header.pack_end(self._update_button)
         toolbar.add_top_bar(header)
 
         split = Adw.NavigationSplitView()
@@ -311,6 +321,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._busy = busy
         self._connect_button.set_sensitive(not busy)
         self._refresh_button.set_sensitive(not busy)
+        self._update_button.set_sensitive(not busy)
         self._upload_button.set_sensitive(not busy)
         self._upload_folder_button.set_sensitive(not busy)
         self._backup_button.set_sensitive(not busy)
@@ -374,6 +385,28 @@ class MainWindow(Adw.ApplicationWindow):
     def _show_error(self, message: str) -> bool:
         dialog = Adw.AlertDialog(heading="İşlem tamamlanamadı", body=message)
         dialog.add_response("close", "Kapat")
+        dialog.present(self)
+        return False
+
+    def _show_update_ready(self, update: PreparedUpdate) -> bool:
+        dialog = Adw.AlertDialog(
+            heading=f"PDrive {update.version} hazır",
+            body=(
+                "Paket yalnızca alpereneser/pdrive-desktop deposundan indirildi; "
+                "dosya adı, boyutu, SHA-256 özeti ve GitHub Actions provenansı "
+                "doğrulandı. Kurulum sistem paket yöneticisini açacak ve yönetici "
+                "onayınızı isteyecek."
+            ),
+        )
+        dialog.add_response("cancel", "Şimdi değil")
+        dialog.add_response("install", "Doğrulanmış güncellemeyi kur")
+        dialog.set_response_appearance("install", Adw.ResponseAppearance.SUGGESTED)
+
+        def response(_dialog: Adw.AlertDialog, response_name: str) -> None:
+            if response_name == "install":
+                self._controller.install_prepared_update()
+
+        dialog.connect("response", response)
         dialog.present(self)
         return False
 

@@ -7,8 +7,9 @@ by visual appeal.
 
 - Reproducible Debian package checks in CI.
 - Versioned GitHub Releases with SHA-256 manifests.
-- Immutable release tags and provenance/signature verification.
+- Immutable release tags and provenance/signature verification. Completed in 0.1.4.
 - User-controlled update checks followed by explicit privileged installation approval.
+  Completed in 0.1.4.
 
 ## Reliable transfers
 

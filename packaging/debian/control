@@ -3,7 +3,7 @@ Version: 0.0.0
 Section: net
 Priority: optional
 Architecture: amd64
-Depends: python3 (>= 3.12), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, libsecret-1-0
+Depends: python3 (>= 3.12), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, libsecret-1-0, gh, policykit-1
 Maintainer: PDrive Desktop contributors
 Description: Private and native Proton Drive experience for Linux
  PDrive Desktop provides a polished GTK interface for browsing, uploading,
