@@ -56,6 +56,12 @@
   <content_rating type="oars-1.1"/>
   <provides><binary>pdrive-desktop</binary></provides>
   <releases>
+    <release version="0.1.4" date="2026-09-05">
+      <description>
+        <p>Added a local transfer queue with safe cancellation and explicit retry, remote
+        backup completeness verification, and provenance-verified user-approved updates.</p>
+      </description>
+    </release>
     <release version="0.1.3" date="2026-08-23">
       <description>
         <p>Enabled real navigation for every sidebar section, single-click folder opening,

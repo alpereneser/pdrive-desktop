@@ -24,6 +24,17 @@ find "$python_dir" -type d -name __pycache__ -prune -exec rm -rf -- {} +
 find "$python_dir" -type d -exec chmod 0755 {} +
 find "$python_dir" -type f -exec chmod 0644 {} +
 
+dist_info="$stage_dir/usr/lib/python3/dist-packages/pdrive_desktop-${project_version}.dist-info"
+install -d -m 0755 "$dist_info"
+cat > "$dist_info/METADATA" <<EOF
+Metadata-Version: 2.1
+Name: pdrive-desktop
+Version: $project_version
+Summary: Security-first Proton Drive desktop client for Linux
+EOF
+install -m 0644 /dev/null "$dist_info/INSTALLER"
+printf '%s\n' 'pdrive-deb' > "$dist_info/INSTALLER"
+
 install -d -m 0755 "$stage_dir/usr/bin"
 install -m 0755 "$project_root/packaging/pdrive-desktop" "$stage_dir/usr/bin/pdrive-desktop"
 

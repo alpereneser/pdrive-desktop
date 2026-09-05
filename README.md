@@ -96,11 +96,12 @@ matches `pyproject.toml`.
 
 ## Installation and releases
 
-Release packages will be published on the repository's **Releases** page together with a
-SHA-256 manifest. Until the first provenance-verified release is published, build from source
-or treat locally shared `.deb` files as development previews. PDrive Desktop does not yet
-perform automatic privileged updates; that feature remains blocked on end-to-end artifact
-authenticity verification.
+Release packages are published on the repository's **Releases** page together with a SHA-256
+manifest and GitHub build provenance. The in-app update action accepts only stable, newer
+versions from `alpereneser/pdrive-desktop`; it checks the exact asset name and size, SHA-256,
+the GitHub-hosted release workflow identity, and rejects self-hosted builders. Installation
+starts only after the user reviews the version and accepts the operating system's administrator
+prompt. PDrive never retains administrator credentials or runs release-provided scripts.
 
 The current development milestone supports browser authentication, folder navigation,
 safe-conflict upload/download, folder creation, and confirmed move-to-trash. Permanent
