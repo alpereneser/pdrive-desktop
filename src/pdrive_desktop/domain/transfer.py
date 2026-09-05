@@ -39,9 +39,12 @@ class TransferJob:
             raise ValueError("Invalid transfer ID")
         if self.item_count < 1:
             raise ValueError("Transfer requires at least one item")
-        if self.status in _TERMINAL_STATUSES and self.status is not TransferStatus.FAILED:
-            if self.retryable:
-                raise ValueError("Only failed transfers may be retryable")
+        if (
+            self.status in _TERMINAL_STATUSES
+            and self.status is not TransferStatus.FAILED
+            and self.retryable
+        ):
+            raise ValueError("Only failed transfers may be retryable")
 
     def start(self) -> TransferJob:
         self._require(TransferStatus.QUEUED)
@@ -73,4 +76,3 @@ class TransferJob:
     def _require(self, *allowed: TransferStatus) -> None:
         if self.status not in allowed:
             raise ValueError(f"Illegal transfer transition from {self.status}")
-
