@@ -23,6 +23,8 @@ data.
 - Create folders and upload files or directories with non-destructive conflict policies.
 - Download into a private local staging area, then commit regular files without overwriting
   existing local data or following symbolic links.
+- Queue uploads, downloads, and backups in memory with one active CLI process; cancellation
+  stops only that owned process tree and retries happen only after an explicit user action.
 - Move remote items to Trash only after explicit confirmation.
 - Run a one-way, non-deleting backup with a verification pass.
 

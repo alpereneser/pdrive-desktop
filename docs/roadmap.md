@@ -12,7 +12,9 @@ by visual appeal.
 
 ## Reliable transfers
 
-- Transfer queue with per-item progress, cancellation, retry, and resumable state.
+- In-memory FIFO transfer queue with bounded concurrency, honest indeterminate progress,
+  owned-process cancellation, and explicit retry. Completed in 0.1.3.
+- Resumable transfers when the official CLI exposes a stable resume/progress contract.
 - Downloads staged in a private directory and atomically committed without overwriting.
 - Verification that a completed backup contains every expected remote item.
 - Clear offline, authentication-expired, quota, and rate-limit states.
@@ -34,4 +36,3 @@ by visual appeal.
 Mounting Drive as a FUSE filesystem is not planned until the official SDK exposes a stable,
 safe contract suitable for it. PDrive Desktop will not extract or reuse Proton session secrets
 to bridge unsupported backends.
-

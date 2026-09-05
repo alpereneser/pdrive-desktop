@@ -8,6 +8,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from pdrive_desktop.domain.drive import DriveNode, DrivePath, NodeKind
+from pdrive_desktop.domain.transfer import TransferJob, TransferKind, TransferStatus
 from pdrive_desktop.presentation.controller import DesktopController
 
 
@@ -60,6 +61,8 @@ class MainWindow(Adw.ApplicationWindow):
         self._progress = Gtk.ProgressBar(visible=False)
         self._pulse_source: int | None = None
         self._busy = False
+        self._transfer_busy = False
+        self._retry_transfer_id: str | None = None
         self._current_path = DrivePath.parse("/my-files")
         self._section_root = self._current_path
         self._nav_buttons: dict[str, Gtk.Button] = {}
@@ -88,6 +91,12 @@ class MainWindow(Adw.ApplicationWindow):
         self._trash_button = Gtk.Button(
             icon_name="user-trash-symbolic", tooltip_text="Çöp kutusuna taşı"
         )
+        self._cancel_transfer_button = Gtk.Button(
+            label="İptal", tooltip_text="Aktif aktarımı güvenle iptal et", visible=False
+        )
+        self._retry_transfer_button = Gtk.Button(
+            label="Yeniden dene", tooltip_text="Başarısız aktarımı yeniden dene", visible=False
+        )
         self._download_button.set_sensitive(False)
         self._trash_button.set_sensitive(False)
         self._search = Gtk.SearchEntry(placeholder_text="Drive'da ara")
@@ -98,6 +107,7 @@ class MainWindow(Adw.ApplicationWindow):
             on_nodes=self._show_nodes,
             on_error=self._show_error,
             on_state=self._show_state,
+            on_transfer=self._show_transfer,
         )
         self._connect_button.connect("clicked", lambda _button: self._controller.connect())
         self._refresh_button.connect("clicked", lambda _button: self._controller.refresh())
@@ -107,10 +117,17 @@ class MainWindow(Adw.ApplicationWindow):
         self._backup_button.connect("clicked", self._choose_backup_folder)
         self._download_button.connect("clicked", self._choose_download_folder)
         self._trash_button.connect("clicked", self._confirm_trash)
+        self._cancel_transfer_button.connect(
+            "clicked", lambda _button: self._controller.cancel_transfer()
+        )
+        self._retry_transfer_button.connect(
+            "clicked", lambda _button: self._controller.retry_last_failed()
+        )
         self._list.connect("row-activated", self._row_activated)
         self._list.connect("row-selected", self._row_selected)
         self._list.connect("selected-rows-changed", self._selection_changed)
         self.set_content(self._build_layout())
+        self.connect("close-request", self._window_closing)
         self._controller.refresh()
 
     def _build_layout(self) -> Adw.ToolbarView:
@@ -267,6 +284,8 @@ class MainWindow(Adw.ApplicationWindow):
             self._action_content("user-trash-symbolic", "Çöpe taşı")
         )
         selection_bar.append(self._status_label)
+        selection_bar.append(self._retry_transfer_button)
+        selection_bar.append(self._cancel_transfer_button)
         selection_bar.append(self._download_button)
         selection_bar.append(self._trash_button)
 
@@ -301,14 +320,51 @@ class MainWindow(Adw.ApplicationWindow):
             not busy and self._current_path != self._section_root
         )
         self._selection_changed(self._list)
-        if busy and self._pulse_source is None:
+        self._update_progress()
+        self._update_location_actions()
+        return False
+
+    def _update_progress(self) -> None:
+        running = self._busy or self._transfer_busy
+        if running and self._pulse_source is None:
             self._progress.set_visible(True)
             self._pulse_source = GLib.timeout_add(120, self._pulse_progress)
-        elif not busy and self._pulse_source is not None:
+        elif not running and self._pulse_source is not None:
             GLib.source_remove(self._pulse_source)
             self._pulse_source = None
             self._progress.set_visible(False)
-        self._update_location_actions()
+
+    def _show_transfer(self, job: TransferJob, waiting: int) -> bool:
+        labels = {
+            TransferKind.UPLOAD: "Yükleme",
+            TransferKind.DOWNLOAD: "İndirme",
+            TransferKind.BACKUP: "Yedekleme",
+        }
+        action = labels[job.kind]
+        suffix = f" · {waiting} aktarım sırada" if waiting else ""
+        messages = {
+            TransferStatus.QUEUED: f"{action} sıraya alındı{suffix}",
+            TransferStatus.RUNNING: f"{action} devam ediyor{suffix}",
+            TransferStatus.CANCELLING: f"{action} iptal ediliyor{suffix}",
+            TransferStatus.COMPLETED: f"{action} tamamlandı{suffix}",
+            TransferStatus.FAILED: f"{action} tamamlanamadı{suffix}",
+            TransferStatus.CANCELLED: f"{action} iptal edildi{suffix}",
+        }
+        self._status_label.set_label(messages[job.status])
+        self._transfer_busy = job.status in {
+            TransferStatus.RUNNING,
+            TransferStatus.CANCELLING,
+        } or waiting > 0
+        self._cancel_transfer_button.set_visible(
+            job.status in {TransferStatus.RUNNING, TransferStatus.CANCELLING}
+        )
+        self._cancel_transfer_button.set_sensitive(job.status is TransferStatus.RUNNING)
+        if job.status is TransferStatus.FAILED and job.retryable:
+            self._retry_transfer_id = job.job_id
+        elif job.status is TransferStatus.QUEUED and job.job_id == self._retry_transfer_id:
+            self._retry_transfer_id = None
+        self._retry_transfer_button.set_visible(self._retry_transfer_id is not None)
+        self._update_progress()
         return False
 
     def _pulse_progress(self) -> bool:
@@ -316,10 +372,13 @@ class MainWindow(Adw.ApplicationWindow):
         return True
 
     def _show_error(self, message: str) -> bool:
-        self._show_state("Bağlantı kurulamadı")
-        dialog = Adw.AlertDialog(heading="Proton Drive'a bağlanılamadı", body=message)
+        dialog = Adw.AlertDialog(heading="İşlem tamamlanamadı", body=message)
         dialog.add_response("close", "Kapat")
         dialog.present(self)
+        return False
+
+    def _window_closing(self, _window: Adw.ApplicationWindow) -> bool:
+        self._controller.shutdown()
         return False
 
     def _show_nodes(self, path: DrivePath, nodes: Sequence[DriveNode]) -> bool:
