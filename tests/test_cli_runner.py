@@ -36,6 +36,13 @@ def test_runner_rejects_non_allowlisted_operation(tmp_path: Path) -> None:
         asyncio.run(runner.run(("filesystem", "remove"), ("/my-files/x",)))
 
 
+def test_runner_forces_keychain_and_error_only_cli_logging() -> None:
+    environment = SecureCliRunner._safe_environment()
+
+    assert environment["PROTON_DRIVE_CREDENTIALS_STORE"] == "keychain"
+    assert environment["PROTON_DRIVE_LOG_LEVEL"] == "ERROR"
+
+
 def test_runner_cancels_only_its_owned_process(tmp_path: Path) -> None:
     executable = tmp_path / "proton-drive"
     executable.write_text("#!/bin/sh\nsleep 30\n", encoding="utf-8")

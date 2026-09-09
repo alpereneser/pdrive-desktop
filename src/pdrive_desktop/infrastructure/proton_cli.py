@@ -224,7 +224,15 @@ class SecureCliRunner:
             "WAYLAND_DISPLAY",
         )
         environment = {key: os.environ[key] for key in allowed if key in os.environ}
-        environment.update({"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "NO_COLOR": "1"})
+        environment.update(
+            {
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "NO_COLOR": "1",
+                "PROTON_DRIVE_CREDENTIALS_STORE": "keychain",
+                "PROTON_DRIVE_LOG_LEVEL": "ERROR",
+            }
+        )
         return environment
 
 

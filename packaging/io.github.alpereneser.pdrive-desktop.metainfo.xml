@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1"/>
   <provides><binary>pdrive-desktop</binary></provides>
   <releases>
+    <release version="0.2.0" date="2026-09-09">
+      <description>
+        <p>Improved file browsing with deliberate folder activation, sorting, richer
+        metadata, keyboard navigation, transfer notifications, and stricter local logging.</p>
+      </description>
+    </release>
     <release version="0.1.6" date="2026-09-05">
       <description>
         <p>Applied the official PDrive Desktop logo consistently across Debian,

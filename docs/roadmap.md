@@ -20,12 +20,14 @@ by visual appeal.
 - Local-only verification that a completed backup contains every expected remote item,
   with type and file-size checks. Completed in 0.1.3.
 - Clear offline, authentication-expired, quota, and rate-limit states.
+- Force the official CLI to use the OS keychain and error-only local logging. Completed in 0.2.0.
 
 ## Desktop integration
 
-- Notifications for completed or failed background transfers.
+- Notifications for completed or failed background transfers. Completed in 0.2.0.
 - Open local destination and copy remote path actions.
-- Search, sorting, pagination, keyboard navigation, and accessibility review.
+- Search and sorting. Completed in 0.2.0.
+- Pagination, full keyboard navigation, and accessibility review.
 - Settings and About windows with versions, privacy boundary, and diagnostics export.
 
 ## Sync beta prerequisites
