@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,8 @@ class PDriveApplication(Adw.Application):
             ".breadcrumb { font-size: 20px; font-weight: 700; }"
             ".file-list { background: transparent; margin: 12px 18px; }"
             ".file-row { padding: 5px 8px; border-radius: 10px; }"
+            ".file-row:hover { background: alpha(currentColor, .045); }"
+            ".file-meta { color: alpha(currentColor, .58); font-size: 12px; }"
             ".selection-bar { padding: 8px 18px; border-top: 1px solid alpha(currentColor, .08); }"
             ".status-text { color: alpha(currentColor, .58); font-size: 12px; }"
         )
@@ -69,6 +72,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._section_root = self._current_path
         self._nav_buttons: dict[str, Gtk.Button] = {}
         self._row_nodes: dict[Gtk.ListBoxRow, DriveNode] = {}
+        self._nodes: tuple[DriveNode, ...] = ()
+        self._sort_mode = "name"
+        self._notified_transfers: set[tuple[str, TransferStatus]] = set()
         self._connect_button = Gtk.Button(label="Güvenli bağlan")
         self._connect_button.add_css_class("suggested-action")
         self._refresh_button = Gtk.Button(
@@ -137,9 +143,10 @@ class MainWindow(Adw.ApplicationWindow):
             "clicked", lambda _button: self._controller.retry_last_failed()
         )
         self._list.connect("row-activated", self._row_activated)
-        self._list.connect("row-selected", self._row_selected)
         self._list.connect("selected-rows-changed", self._selection_changed)
+        self._list.set_activate_on_single_click(False)
         self.set_content(self._build_layout())
+        self._install_keyboard_navigation()
         self.connect("close-request", self._window_closing)
         self._controller.refresh()
 
@@ -249,6 +256,12 @@ class MainWindow(Adw.ApplicationWindow):
         content_toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         content_toolbar.add_css_class("content-toolbar")
         content_toolbar.append(self._breadcrumb)
+        self._sort = Gtk.DropDown.new_from_strings(
+            ["Ada göre", "En yeni", "Boyuta göre"]
+        )
+        self._sort.set_tooltip_text("Dosyaları sırala")
+        self._sort.connect("notify::selected", self._sort_changed)
+        content_toolbar.append(self._sort)
         content_toolbar.append(self._search)
 
         actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -383,6 +396,19 @@ class MainWindow(Adw.ApplicationWindow):
         elif job.status is TransferStatus.QUEUED and job.job_id == self._retry_transfer_id:
             self._retry_transfer_id = None
         self._retry_transfer_button.set_visible(self._retry_transfer_id is not None)
+        final_state = job.status in {
+            TransferStatus.COMPLETED,
+            TransferStatus.FAILED,
+            TransferStatus.CANCELLED,
+        }
+        notification_key = (job.job_id, job.status)
+        if final_state and notification_key not in self._notified_transfers:
+            self._notified_transfers.add(notification_key)
+            notification = Gio.Notification.new(messages[job.status])
+            notification.set_body("Aktarım durumunu PDrive ana penceresinde görebilirsiniz.")
+            application = self.get_application()
+            if application is not None:
+                application.send_notification(f"transfer-{job.job_id}", notification)
         self._update_progress()
         return False
 
@@ -428,22 +454,37 @@ class MainWindow(Adw.ApplicationWindow):
             "Dosyalarım" if str(path) == "/my-files" else path.value
         )
         self._back_button.set_sensitive(path != self._section_root)
+        self._nodes = tuple(nodes)
+        self._render_nodes()
+        self._stack.set_visible_child_name("files")
+        self._update_location_actions()
+        return False
+
+    def _render_nodes(self) -> None:
         self._row_nodes.clear()
         while row := self._list.get_row_at_index(0):
             self._list.remove(row)
-        ordered = sorted(
-            nodes, key=lambda item: (item.kind is not NodeKind.FOLDER, item.name.casefold())
-        )
+        ordered = sorted(self._nodes, key=self._node_sort_key)
         for node in ordered:
             row = self._node_row(node)
             self._row_nodes[row] = node
             self._list.append(row)
-        self._files_stack.set_visible_child_name("list" if nodes else "empty")
-        self._stack.set_visible_child_name("files")
+        self._files_stack.set_visible_child_name("list" if self._nodes else "empty")
         self._selection_changed(self._list)
         self._filter_rows(self._search)
-        self._update_location_actions()
-        return False
+
+    def _node_sort_key(self, node: DriveNode) -> tuple[object, ...]:
+        folder_rank = node.kind is not NodeKind.FOLDER
+        if self._sort_mode == "date":
+            timestamp = node.modified_at.timestamp() if node.modified_at else 0.0
+            return (folder_rank, -timestamp, node.name.casefold())
+        if self._sort_mode == "size":
+            return (folder_rank, -(node.size or 0), node.name.casefold())
+        return (folder_rank, node.name.casefold())
+
+    def _sort_changed(self, dropdown: Gtk.DropDown, _parameter: object) -> None:
+        self._sort_mode = ("name", "date", "size")[dropdown.get_selected()]
+        self._render_nodes()
 
     def _filter_rows(self, search: Gtk.SearchEntry) -> None:
         query = search.get_text().strip().casefold()
@@ -451,15 +492,6 @@ class MainWindow(Adw.ApplicationWindow):
             row.set_visible(not query or query in node.name.casefold())
 
     def _row_activated(self, _list: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
-        node = self._row_nodes.get(row)
-        if node is not None and node.kind is NodeKind.FOLDER:
-            self._controller.open_folder(node.path)
-
-    def _row_selected(
-        self, _list: Gtk.ListBox, row: Gtk.ListBoxRow | None
-    ) -> None:
-        if row is None or self._busy:
-            return
         node = self._row_nodes.get(row)
         if node is not None and node.kind is NodeKind.FOLDER:
             self._controller.open_folder(node.path)
@@ -615,9 +647,50 @@ class MainWindow(Adw.ApplicationWindow):
             else "text-x-generic-symbolic"
         )
         row.add_prefix(Gtk.Image(icon_name=icon_name, pixel_size=32))
+        kind_label = {
+            NodeKind.FOLDER: "Klasör",
+            NodeKind.PHOTO: "Fotoğraf",
+            NodeKind.ALBUM: "Albüm",
+            NodeKind.FILE: "Dosya",
+        }[node.kind]
+        details: list[str] = [kind_label]
         if node.size is not None:
-            row.set_subtitle(_format_size(node.size))
+            details.append(_format_size(node.size))
+        if node.modified_at is not None:
+            details.append(_format_modified(node.modified_at))
+        row.set_subtitle("  ·  ".join(details))
+        if node.kind is NodeKind.FOLDER:
+            row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+            row.set_tooltip_text("Açmak için çift tıklayın veya Enter tuşuna basın")
         return row
+
+    def _install_keyboard_navigation(self) -> None:
+        keys = Gtk.EventControllerKey()
+        keys.connect("key-pressed", self._key_pressed)
+        self.add_controller(keys)
+
+    def _key_pressed(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        state: Gdk.ModifierType,
+    ) -> bool:
+        control = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        alt = bool(state & Gdk.ModifierType.ALT_MASK)
+        if control and keyval in {Gdk.KEY_f, Gdk.KEY_F}:
+            self._search.grab_focus()
+            return True
+        if control and keyval in {Gdk.KEY_r, Gdk.KEY_R}:
+            self._controller.refresh()
+            return True
+        if alt and keyval == Gdk.KEY_Up:
+            self._controller.go_up()
+            return True
+        if keyval == Gdk.KEY_Delete and self._selected_nodes():
+            self._confirm_trash(self._trash_button)
+            return True
+        return False
 
 
 def _format_size(size: int) -> str:
@@ -627,6 +700,10 @@ def _format_size(size: int) -> str:
             return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
         value /= 1024
     raise AssertionError("unreachable")
+
+
+def _format_modified(value: datetime) -> str:
+    return value.astimezone().strftime("%d.%m.%Y %H:%M")
 
 
 def run() -> int:

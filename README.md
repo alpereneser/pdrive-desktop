@@ -19,7 +19,11 @@ data.
 
 - Sign in through Proton's official browser flow and Linux secret store.
 - Browse My files, Computers, shared sections, Photos, and Trash.
-- Enter folders with a single click and navigate back safely.
+- Select folders with one click, open them with double-click or Enter, and navigate back safely.
+- Sort folders and files by name, modification date, or size; open folders deliberately
+  with double-click or Enter while preserving multi-selection.
+- Use Ctrl+F to search, Ctrl+R to refresh, Alt+Up to navigate upward, and Delete to start
+  the confirmed move-to-trash flow.
 - Create folders and upload files or directories with non-destructive conflict policies.
 - Download into a private local staging area, then commit regular files without overwriting
   existing local data or following symbolic links.
